@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>বাস অ্যাডমিন</title>
+<style>
+:root{--bg:#fff;--fg:#111;--mut:#666;--ac:#dc2626;--ok:#16a34a;--warn:#d97706;--road:#2f3136}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#111;--fg:#eee;--mut:#999;--road:#1c1d21}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+header{background:#333;color:#fff;padding:12px 16px;font-weight:600}
+main{padding:12px 16px}
+h4{margin:16px 0 4px}
+select,button{font:inherit;width:100%;padding:11px;border-radius:8px;border:1px solid #bbb;margin-top:8px;background:var(--bg);color:var(--fg)}
+button{background:var(--ac);color:#fff;border:0;font-weight:600}
+button.sec{background:#555}
+.row2{display:flex;gap:8px}.row2 button{margin-top:8px}
+.box{margin:10px 0;padding:10px;border-radius:8px;background:#8881;line-height:1.6;font-size:14px}
+.muted{color:var(--mut);font-size:13px}
+.jam{color:var(--warn);font-weight:700}.ok{color:var(--ok);font-weight:700}
+#track{margin:12px 0;position:relative}
+.r{display:grid;grid-template-columns:1fr 1fr 1fr;height:52px;align-items:stretch}
+.r.sel .lf,.r.sel .rt{background:#8882}
+.lf,.rt{display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 8px}
+.lf input,.rt input{width:100%;min-width:0;font-size:13px;padding:6px 3px;border-radius:6px;border:1px solid #bbb;background:var(--bg);color:var(--fg);text-align:center}
+.loc{font-size:12px;color:var(--mut)}
+.ct{position:relative;display:flex;align-items:center;justify-content:center}
+.ct:before{content:"";position:absolute;top:0;bottom:0;left:50%;width:44px;margin-left:-22px;background:var(--road);box-shadow:inset 3px 0 #555,inset -3px 0 #555}
+.ct:after{content:"";position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;background:repeating-linear-gradient(#f5f5f5 0 12px,transparent 12px 24px)}
+.node{position:relative;z-index:1;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid #9ca3af;cursor:pointer}
+.node.red{background:var(--ac);border-color:#fff;box-shadow:0 0 0 5px #dc262645}
+.node.green{background:var(--ok);border-color:#fff;box-shadow:0 0 0 5px #16a34a45}
+.blabel{font-weight:700}
+.blabel.red{color:var(--ac)}.blabel.green{color:var(--ok)}
+#bus{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:20px;color:#fff;z-index:3;box-shadow:0 0 0 4px #fff,0 2px 8px #0005;transition:top 1s linear,background .4s}
+#bus.halt{background:var(--ac)}#bus.go{background:var(--ok)}
+textarea{width:100%;font:inherit;padding:8px;border-radius:8px;border:1px solid #bbb;margin-top:8px;background:var(--bg);color:var(--fg)}
+button.hb{width:auto;margin:0;padding:6px 10px;background:#fff3;color:#fff;border:0;border-radius:8px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sheet{position:fixed;inset:0;background:#0007;display:flex;align-items:flex-end;z-index:9}
+.sheet[hidden]{display:none}
+.sbox{background:var(--bg);color:var(--fg);width:100%;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px}
+.sbox h4{margin:12px 0 4px}.it{padding:8px 0;border-bottom:1px solid #8883;font-size:14px}
+.sbox input,.sbox select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #bbb;font:inherit;background:var(--bg);color:var(--fg)}
+.sbox button.jb{width:auto;display:inline-block;margin:0 0 0 8px;padding:5px 10px;font-size:13px}
+:root[data-theme=light]{--bg:#fff;--fg:#111;--mut:#666;--road:#2f3136}
+:root[data-theme=dark]{--bg:#111;--fg:#eee;--mut:#999;--road:#1c1d21}
+.uni{font-size:10px;line-height:1.25;text-align:center;font-weight:600;letter-spacing:.3px}
+</style></head>
+<body>
+<header><button class="hb" id="mb">☰ মেনু</button><span class="uni">সাউথ<br>এশিয়া<br>ইউনিভার্সিটি</span><button class="hb" id="sl">স্টুডেন্ট লিস্ট</button></header>
+<main>
+<select id="route"><option value="">রুট বেছে নিন</option></select>
+<select id="rmode"><option value="auto">অটো (বিকাল ৩টা থেকে ভোর ৬টা উল্টো)</option><option value="normal">সাধারণ (ম্যানুয়াল)</option><option value="reverse">উল্টো (ম্যানুয়াল)</option></select>
+<h4>চালকের তথ্য (বেছে নেওয়া রুট, সব ব্যবহারকারী দেখবে)</h4>
+<input id="dname" placeholder="চালকের নাম"><input id="dphone" placeholder="চালকের ফোন নাম্বার">
+<button id="dsv">চালকের তথ্য সেভ</button>
+<h4>ট্র্যাক (বাম: স্টপ · মাঝে: রাস্তা · ডান: সময়)</h4>
+<div class="muted" id="dirlbl" style="margin-top:10px"></div>
+<div id="track"><div id="rows"></div><div id="bus"></div></div>
+<div class="box" id="status"></div>
+<button id="here">বেছে নেওয়া স্টপে এই জায়গার স্থান নিন</button>
+<div class="row2"><button id="save">সংরক্ষণ</button><button id="reset" class="sec">লাইভ রিসেট</button></div>
+<button id="load" class="sec">ডিফল্ট রুট ও সময় লোড/আপডেট</button>
+<div class="box" id="msg"></div>
+
+</main>
+<div id="drawer" class="sheet" hidden><div class="sbox">
+<button id="dx" class="hb" style="float:right;color:var(--fg);background:#8883">✕</button>
+<h4>এপ ডেভেলপার (যাত্রী অ্যাপের মেনুর নিচে দেখাবে)</h4>
+<input id="dn" placeholder="ডেভেলপারের নাম"><input id="dp" placeholder="ফোন নাম্বার">
+<input id="dwa" placeholder="WhatsApp নাম্বার (যেমন 8801XXXXXXXXX)"><input id="dfb" placeholder="Facebook ID">
+<input id="dph" type="file" accept="image/*"><div class="muted" id="dpm">ছবি বেছে নিলে ছোট করে সেভ হবে।</div>
+<button id="dsave">ডেভেলপার তথ্য সেভ</button>
+<h4>ব্লাড ডোনেশন (যাত্রী অ্যাপের নোটিশে দেখাবে)</h4>
+<input id="ab_p" placeholder="রোগীর সমস্যা (যেমন: অপারেশন)">
+<select id="ab_g"><option value="">🩸 রক্তের গ্রুপ</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select>
+<input id="ab_q" placeholder="💉 রক্তের পরিমাণ (যেমন: ২ ব্যাগ)"><input id="ab_d" type="date" title="🗓️ রক্তদানের তারিখ"><input id="ab_t" type="time" title="🕛 রক্তদানের সময়">
+<input id="ab_l" placeholder="🏫 রক্তদানের স্থান"><input id="ab_c" placeholder="যোগাযোগ (ফোন নাম্বার)">
+<button id="ab_s">ব্লাড ডোনেশন সেভ</button><button id="ab_x" class="sec">ফর্ম খালি করুন</button>
+<div class="box" id="ab_list">লোড হচ্ছে...</div>
+<h4>রুট নোটিশ (বেছে নেওয়া রুটে যাবে)</h4>
+<textarea id="nt" rows="2" placeholder="নোটিশ লিখুন"></textarea>
+<button id="nsend">এই রুটে নোটিশ পাঠান</button>
+<div class="box" id="nlist"></div>
+<h4>বাসের সতর্কবার্তা</h4>
+<textarea id="alt" rows="2" placeholder="যেমন: বাস ১৫ মিনিট দেরিতে ছাড়বে"></textarea>
+<button id="asend">সতর্কবার্তা পাঠান (বর্তমান রুট, না থাকলে সব রুট)</button>
+<div class="box" id="alist"></div>
+<h4>রুলস (Firebase রিয়েল-টাইমের জন্য)</h4>
+<div class="muted">নিচের লেখা কপি করে Firebase Console → Realtime Database → Rules-এ বসান।</div>
+<textarea id="rules" readonly rows="12" style="font-size:12px;font-family:monospace">{
+  "rules": {
+    "routes":   { ".read": true, ".write": "auth != null &amp;&amp; auth.token.admin === true" },
+    "info":     { ".read": true, ".write": "auth != null &amp;&amp; auth.token.admin === true" },
+    "dev":      { ".read": true, ".write": "auth != null &amp;&amp; auth.token.admin === true" },
+    "alerts":   { ".read": true, ".write": "auth != null &amp;&amp; auth.token.admin === true" },
+    "notices":  { ".read": true, ".write": "auth != null &amp;&amp; auth.token.admin === true" },
+    "live":     { ".read": true, ".write": "auth != null" },
+    "members": {
+      ".read": true,
+      "$key": {
+        ".write": "auth != null &amp;&amp; ((newData.child('uid').val() === auth.uid) || (data.child('uid').val() === auth.uid) || auth.token.admin === true)"
+      }
+    },
+    "profiles": {
+      ".read": true,
+      "$uid": { ".write": "auth != null &amp;&amp; (auth.uid === $uid || auth.token.admin === true)" }
+    },
+    "messages": {
+      ".read": true,
+      "$id": {
+        ".write": "auth != null &amp;&amp; ((newData.child('uid').val() === auth.uid) || (data.child('uid').val() === auth.uid) || auth.token.admin === true)"
+      }
+    },
+    "feedback":  { ".read": true, ".write": "auth != null" },
+    "lostfound": { ".read": true, ".write": "auth != null" },
+    "carpool":   { ".read": true, ".write": "auth != null" },
+    "blood":     { ".read": true, ".write": "auth != null" }
+  }
+}</textarea>
+<button id="rcopy">রুলস কপি করুন</button>
+</div></div>
+<div id="slist" class="sheet" hidden><div class="sbox"><button id="slx" class="hb" style="float:right;color:var(--fg);background:#8883">✕</button><h4>স্টুডেন্ট লিস্ট</h4><div id="slc"></div></div></div>
+<!--LOCALFALLBACK-->
+<script>
+/* Offline/standalone fallback: used when the file is opened or downloaded without the hosting service.
+   Stores data in this browser (localStorage), so menus, accounts and forms keep working on this device. */
+(function(){
+  if (window.claude) return;
+  const KEY = 'bus_local_';
+  const subs = {};
+  function read(path){ try { return JSON.parse(localStorage.getItem(KEY + path) || '{}'); } catch (e) { return {}; } }
+  function write(path, o){ try { localStorage.setItem(KEY + path, JSON.stringify(o)); } catch (e) {} (subs[path] || []).forEach(f => f()); }
+  function emit(path, cb){ const o = read(path); setTimeout(() => cb(Object.keys(o).map(k => Object.assign({ id: k }, o[k]))), 0); }
+  window.addEventListener('storage', e => { if (e.key && e.key.indexOf(KEY) === 0) (subs[e.key.slice(KEY.length)] || []).forEach(f => f()); });
+  const clone = d => JSON.parse(JSON.stringify(d || {}));
+  window.claude = {
+    use: async (name) => {
+      if (name === 'user') return { id: async () => { try { return localStorage.getItem('bus_uid'); } catch (e) { return null; } } };
+      if (name !== 'db') return null;
+      return { collection(path){ return {
+        doc(id){ return {
+          set(d){ const o = read(path); o[id] = clone(d); write(path, o); return Promise.resolve(); },
+          update(d){ const o = read(path); o[id] = Object.assign({}, o[id] || {}, clone(d)); write(path, o); return Promise.resolve(); },
+          delete(){ const o = read(path); delete o[id]; write(path, o); return Promise.resolve(); }
+        }; },
+        onSnapshot(cb){ (subs[path] = subs[path] || []).push(() => emit(path, cb)); emit(path, cb); }
+      }; } };
+    }
+  };
+})();
+</script>
+<!--/LOCALFALLBACK-->
+<script>
+(async()=>{
+const $=id=>document.getElementById(id);
+const db=await claude.use('db');
+if(!db){$('msg').textContent='এই পেজে ডেটা সংযোগ নেই।';return;}
+
+const SEED={
+ route1:{name:'রুট ১',stops:[
+  ['সাইনবোর্ড','৯:০০ / ৯:০০'],['সায়েদাবাদ','৯:০৫ / ৯:১০'],['মানিকনগর','৯:১০ / ৯:১৫'],['খিলগাঁও','৯:১৫ / ৯:২০'],
+  ['মালিবাগ','৯:২৫ / ৯:৩০'],['রামপুরা','৯:৩৫ / ৯:৪৫'],['বাড্ডা','৯:৪০ / ৯:৫০'],['শাহজাদপুর','৯:৪৫ / ৯:৫৫'],
+  ['গুলশান ২','৯:৫০ / ৮:০৫'],['মহাখালী','৮:০০ / ৮:১৫'],['আসাদগেট','৮:৩০ / ৮:৪৫'],['শ্যামলী','৮:৩৫ / ৮:৫০'],
+  ['আমিনবাজার','৯:০০ / ৯:২০'],['ইউনিভার্সিটি','']]},
+ route2:{name:'রুট ২',stops:[
+  ['গাজীপুর চৌরাস্তা','৯:০০ / ৯:০০'],['টঙ্গী কলেজ গেট','৯:২৫ / ৯:২৫'],['আব্দুল্লাহপুর','৯:৪০ / ৯:৪৫'],['হাউজ বিল্ডিং','৯:৪৫ / ৯:৫০'],
+  ['জসিম উদ্দিন','৯:৫০ / ৯:৫৫'],['বিমানবন্দর','৯:৫৫ / ৮:০০'],['খিলক্ষেত','৮:০০ / ৮:১০'],['বিশ্বরোড','৮:০৫ / ৮:১৫'],
+  ['ইসিবি','৮:১৫ / ৮:২০'],['কালশী','৮:২০ / ৮:২৫'],['মিরপুর ১১','৮:২৫ / ৮:৩০'],['মিরপুর ১০','৮:৩০ / ৮:৪০'],
+  ['আমিনবাজার','৯:০০ / ৯:১৫']]},
+ route3:{name:'রুট ৩',stops:[
+  ['চন্দ্রা','৯:১০'],['জিরানী','৯:২০'],['শ্রীপুর','৯:২৫'],['বাইপাইল','৭:০০'],['নবীনগর','৮:০০'],['বিশমাইল','৮:০৫'],
+  ['জাহাঙ্গীর নগর গেট','৮:১০'],['সি এম বি','৮:১৫'],['রেডিও কলোনি','৮:২০'],['পাকিজা','৮:০০'],['গেণ্ডা','৮:০৫'],
+  ['ব্যাংক টাউন','৮:৪০'],['উলাইল','৮:৪৫'],['ফুলবাড়িয়া','৮:৫০'],['হেমায়েতপুর','৮:৫৫'],['আলমনগর হাউজিং','৮:৫৮'],
+  ['বলিয়ারপুর','৯:০০'],['ইউনিভার্সিটি','৯:০৫']]},
+ route4:{name:'রুট ৪ (শুধু শুক্রবার)',stops:[
+  ['মাওনা','৯:০০'],['মাস্টারবাড়ী','৯:২০'],['বাঘাবাড়ী','৯:৩০'],['হুটাপাড়া','৯:৪০'],['ভবানীপুর','৯:৫০'],
+  ['চৌরাস্তা','৮:০০'],['টঙ্গী','৮:২০'],['কামারপাড়া','৮:৪৫'],['বেড়িবাঁধ','৮:৫০'],['আমিনবাজার','৮:৫৫'],['ইউনিভার্সিটি','৯:০০']]},
+ route5:{name:'রুট ৫',stops:[
+  ['রাজেন্দ্রপুর','৯:০০'],['চৌরাস্তা','৯:২০'],['নাওজোড়','৯:৩০'],['কোনাবাড়ী','৯:৪০'],['শফিপুর','৯:৫০'],
+  ['চন্দ্রা','৮:০০'],['নবীনগর','৮:২০'],['সাভার','৮:৩০'],['ইউনিভার্সিটি','৮:৪৫']]}
+};
+
+let routes={}, live={}, curId='', cur=null, si=0;
+const dist=(a,b,c,d)=>{const R=6371e3,t=Math.PI/180,x=(c-a)*t,y=(d-b)*t,h=Math.sin(x/2)**2+Math.cos(a*t)*Math.cos(c*t)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));};
+const rows=s=>(s.docs||s||[]).map(d=>({id:d.id,...(typeof d.data==='function'?d.data():d)}));
+const say=t=>$('msg').textContent=t;
+const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const geoMsg=e=>e&&e.code===1?'লোকেশন অনুমতি নেই। ফোনের সেটিংসে ব্রাউজারকে লোকেশন অনুমতি দিন।':e&&e.code===3?'লোকেশন পেতে সময় লাগছে। বাইরে গিয়ে আবার চেষ্টা করুন।':'লোকেশন পাওয়া যাচ্ছে না। ফোনের GPS (Location) চালু আছে কিনা দেখুন।';
+
+db.collection('routes').onSnapshot(s=>{
+  routes={}; rows(s).forEach(r=>routes[r.id]=r);
+  {const DB=routes; routes={}; Object.keys(SEED).forEach(k=>routes[k]={name:SEED[k].name,stops:SEED[k].stops.map(([n,t])=>({name:n,time:t,lat:null,lng:null}))}); Object.assign(routes,DB);}
+  $('route').innerHTML='<option value="">রুট বেছে নিন</option>'+Object.keys(routes).sort().map(k=>`<option value="${k}">${routes[k].name||k}</option>`).join('');
+  $('route').value=curId;
+  if(!Object.keys(routes).length)say('রুট নেই। "ডিফল্ট রুট ও সময় লোড/আপডেট" চাপুন।');
+  drawTrack(); drawAll();
+});
+db.collection('live').onSnapshot(s=>{
+  live={}; rows(s).forEach(r=>live[r.id]=r);
+  drawTrack(); drawAll();
+});
+
+$('route').onchange=()=>{
+  curId=$('route').value;
+  if(!curId){cur=null;drawTrack();return;}
+  cur=JSON.parse(JSON.stringify(routes[curId])); si=0; drawTrack(); say('');
+  $('dname').value=routes[curId].driverName||''; $('dphone').value=routes[curId].driverPhone||'';
+};
+
+// Track: left = stop name (editable), middle = road with node, right = time (editable)
+function busPos(r,l,idx,mv){
+  const H=52;
+  if(idx<0)return -H/2;
+  let p=0;
+  if(mv){
+    const a=(r.stops||[])[idx], b=(r.stops||[])[idx+1];
+    if(a&&b&&a.lat!=null&&b.lat!=null&&l.lat!=null){
+      const tot=dist(a.lat,a.lng,b.lat,b.lng), rem=dist(l.lat,l.lng,b.lat,b.lng);
+      p=tot>0?Math.min(1,Math.max(0,1-rem/tot)):0.5;
+    } else p=b?0.5:0;
+  }
+  return (idx+p)*H+H/2;
+}
+function placeBus(r,l,idx,mv,has){
+  const bus=document.getElementById('bus');
+  if(!has){bus.style.display='none';return;}
+  bus.style.display='flex';
+  bus.className=mv?'go':'halt';
+  bus.textContent='🚌';
+  bus.style.top=busPos(r,l,idx,mv)+'px';
+}
+function drawTrack(){
+  const typing=document.activeElement&&document.activeElement.tagName==='INPUT'&&document.activeElement.closest('#track');
+  if(typing)return;
+  const rowsEl=$('rows'), s=$('status');
+  if(!cur){rowsEl.innerHTML='<div class="muted" style="padding:8px">রুট বেছে নিন</div>';$('bus').style.display='none';s.innerHTML='';return;}
+  const rr=routes[curId]||{};
+  $('rmode').value=rr.mode||'auto';
+  const l=live[curId]||{};
+  const has=!!l.ts, idx=has?(l.lastIdx??-1):-1, mv=has&&!!l.moving;
+  const rev=dirOf(rr), n=cur.stops.length;
+  const revT=rev?reversedTimes(cur.stops):null;
+  $('dirlbl').textContent=dirLabel(rr);
+  const order=cur.stops.map((_,i)=>i); if(rev)order.reverse();
+  const dIdx=idx<0?-1:(rev?n-1-idx:idx);
+  const ord=order.map(i=>cur.stops[i]);
+  rowsEl.innerHTML=order.map((pi,di)=>{
+    const x=cur.stops[pi], at=has&&di===dIdx&&!mv;
+    return `<div class="r${pi===si?' sel':''}" data-i="${pi}"><div class="lf"><span class="loc">${x.lat!=null?'✓':'—'}</span><input class="nm" value="${esc(x.name)}"></div><div class="ct"><span class="node${at?' red':''}"></span></div><div class="rt"><input class="tm" value="${esc(rev?(revT[pi]||''):(x.time||''))}" placeholder="সময়"${rev?' readonly':''}></div></div>`;
+  }).join('');
+  placeBus({stops:ord},l,dIdx,mv,has);
+  if(!has){s.innerHTML='<div class="muted">এই বাসের লাইভ লোকেশন এখনো নেই।</div>';return;}
+  const mins=Math.round((Date.now()-l.ts)/60000);
+  const ns=ord[dIdx+1];
+  let nextTxt='';
+  if(ns&&ns.lat!=null&&l.lat!=null){
+    nextTxt=`<div>পরের স্টপ: <b>${esc(ns.name)}</b> · প্রায় ${Math.round(dist(l.lat,l.lng,ns.lat,ns.lng))} মিটার</div>`;
+  } else if(!ns) nextTxt='<div>শেষ স্টপে।</div>';
+  s.innerHTML=(rev?'<div class="muted">দিক: উল্টো</div>':'')
+    +(l.jam?'<div class="jam">⚠️ জ্যামে (২ মিনিটের বেশি দাঁড়িয়ে)</div>':'<div class="ok">✅ চলছে</div>')
+    +nextTxt
+    +(l.departed?`<div>সর্বশেষ ছাড়ল: ${esc(l.departed.stop)}</div>`:'')
+    +`<div class="muted">GPS: ${l.lat?l.lat.toFixed(5):'—'}, ${l.lng?l.lng.toFixed(5):'—'} · ${mins<1?'এইমাত্র':mins+' মিনিট আগে'}</div>`;
+}
+
+$('track').addEventListener('input',e=>{
+  const row=e.target.closest('[data-i]'); if(!row||!cur)return;
+  const i=+row.dataset.i;
+  if(e.target.classList.contains('nm'))cur.stops[i].name=e.target.value;
+  else if(e.target.classList.contains('tm'))cur.stops[i].time=e.target.value;
+});
+$('track').addEventListener('click',e=>{
+  const row=e.target.closest('[data-i]'); if(!row)return;
+  si=+row.dataset.i;
+  document.querySelectorAll('#track .r').forEach(x=>x.classList.remove('sel'));
+  row.classList.add('sel');
+});
+
+function drawAll(){if(!$('all'))return;
+  const ids=Object.keys(live).sort();
+  $('all').innerHTML=ids.length?ids.map(id=>{
+    const l=live[id], rr=routes[id]||{}, m=Math.round((Date.now()-(l.ts||0))/60000);
+    const at=(rr.stops&&rr.stops[l.lastIdx])?rr.stops[l.lastIdx].name:'—';
+    return `<div><b>${rr.name||id}</b>: ${l.jam?'⚠️ জ্যামে':'✅ চলছে'} · ${l.moving?'ছেড়েছে '+esc(at)+' থেকে':'স্টপ: '+esc(at)} · ${m} মিনিট আগে</div>`;
+  }).join(''):'কোনো বাস সক্রিয় নেই।';
+}
+
+$('here').onclick=()=>{
+  if(!cur)return say('আগে রুট বেছে নিন।');
+  if(!navigator.geolocation)return say('এই ব্রাউজারে GPS নেই।');
+  say('লোকেশন নেওয়া হচ্ছে...');
+  navigator.geolocation.getCurrentPosition(p=>{
+    cur.stops[si].lat=+p.coords.latitude.toFixed(6);
+    cur.stops[si].lng=+p.coords.longitude.toFixed(6);
+    si=Math.min(si+1,cur.stops.length-1);
+    drawTrack(); say('স্থান সেট হয়েছে। সংরক্ষণ করতে ভুলবেন না।');
+  },e=>say(geoMsg(e)),{enableHighAccuracy:true,timeout:15000});
+};
+
+$('save').onclick=async()=>{
+  if(!cur)return say('রুট বেছে নিন।');
+  await db.collection('routes').doc(curId).set(cur);
+  say('সংরক্ষণ হয়েছে।');
+};
+
+$('reset').onclick=async()=>{
+  if(!curId)return say('রুট বেছে নিন।');
+  await db.collection('live').doc(curId).delete();
+  say('লাইভ তথ্য মুছে ফেলা হয়েছে।');
+};
+
+$('load').onclick=async()=>{
+  for(const k of Object.keys(SEED)){
+    const old=(routes[k]&&routes[k].stops)||[];
+    const stops=SEED[k].stops.map(([name,time])=>{
+      const o=old.find(x=>x.name===name)||{};
+      return {name,time,lat:o.lat??null,lng:o.lng??null};
+    });
+    await db.collection('routes').doc(k).set({name:SEED[k].name,stops,mode:(routes[k]||{}).mode||'auto',driverName:(routes[k]||{}).driverName||'',driverPhone:(routes[k]||{}).driverPhone||''});
+  }
+  say('সব রুটের সময় আপডেট হয়েছে। আগের স্থান যেখানে নাম মিলেছে সেখানে রয়ে গেছে।');
+};
+
+db.collection('notices').onSnapshot(s=>{
+  const list=rows(s);
+  $('nlist').innerHTML=list.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,20).map(n=>`<div>[${esc((routes[n.routeId]||{}).name||n.routeId)}] ${esc(n.text)} <button class="sdel" data-k="notices" data-id="${esc(n.id)}">মুছুন</button></div>`).join('')||'কোনো নোটিশ নেই';
+});
+$('rmode').onchange=async()=>{
+  if(!curId)return say('আগে রুট বেছে নিন।');
+  const r=routes[curId]||{};
+  await db.collection('routes').doc(curId).set({name:r.name,stops:r.stops||[],mode:$('rmode').value,driverName:r.driverName||'',driverPhone:r.driverPhone||''});
+  say('রুটের দিক সেভ হয়েছে।');
+};
+$('nsend').onclick=async()=>{
+  if(!curId)return say('নোটিশ পাঠাতে আগে একটি রুট বেছে নিন।');
+  const t=$('nt').value.trim(); if(!t)return say('নোটিশ লিখুন।');
+  const ts=Date.now();
+  await db.collection('notices').doc(ts+'_'+curId).set({routeId:curId,text:t,ts});
+  $('nt').value=''; say('নোটিশ পাঠানো হয়েছে।');
+};
+db.collection('notices').onSnapshot(s=>{
+  const list=rows(s);
+  $('nlist').innerHTML=list.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,20).map(n=>`<div>[${esc((routes[n.routeId]||{}).name||n.routeId)}] ${esc(n.text)} <button class="sdel" data-k="notices" data-id="${esc(n.id)}">মুছুন</button></div>`).join('')||'কোনো নোটিশ নেই';
+});
+$('asend').onclick=async()=>{const t=$('alt').value.trim();if(!t)return;const rid=curId||'all',ts=Date.now();await db.collection('alerts').doc(ts+'_'+rid).set({routeId:rid,text:t,ts});$('alt').value='';say('সতর্কবার্তা পাঠানো হয়েছে।');};
+document.addEventListener('click',async e=>{const b=e.target.closest('.sdel');if(!b)return;if(b.dataset.ae){abEdit(b.dataset.ae);return;}await db.collection(b.dataset.k).doc(b.dataset.id).delete();});
+let profilesA=[];
+function abList(){return bloodA.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).map(b=>`<div class="it">🩸 ${esc(b.group||'')} · ${esc(b.qty||'')} · ${esc(b.date||'')} ${esc(b.time||'')} · ${esc(b.place||'')} · যোগাযোগ: ${esc(b.contact||'')} <span class="muted">— ${esc(b.by||'')}</span> <button class="sdel" data-ae="${esc(b.id)}">সম্পাদনা</button> <button class="sdel" data-k="blood" data-id="${esc(b.id)}">মুছুন</button></div>`).join('')||'কোনো অনুরোধ নেই';}
+let editAB=null;
+function abClear(){editAB=null;['ab_p','ab_q','ab_d','ab_t','ab_l','ab_c'].forEach(k=>$(k).value='');$('ab_g').value='';$('ab_s').textContent='ব্লাড ডোনেশন সেভ';}
+function abEdit(id){const b=bloodA.find(x=>x.id===id);if(!b)return;editAB=id;$('ab_p').value=b.problem||'';$('ab_g').value=b.group||'';$('ab_q').value=b.qty||'';$('ab_d').value=b.date||'';$('ab_t').value=b.time||'';$('ab_l').value=b.place||'';$('ab_c').value=b.contact||'';$('ab_s').textContent='আপডেট করুন';}
+$('ab_x').onclick=abClear;
+$('ab_s').onclick=async()=>{
+  const v=k=>$(k).value.trim();
+  if(!v('ab_p')||!v('ab_g')||!v('ab_q')||!v('ab_d')||!v('ab_l')||!v('ab_c'))return say('ব্লাড ডোনেশনের সব ঘর পূরণ করুন।');
+  const old=editAB?bloodA.find(x=>x.id===editAB):null;
+  await db.collection('blood').doc(editAB||(Date.now()+'_admin')).set({problem:v('ab_p'),group:v('ab_g'),qty:v('ab_q'),date:v('ab_d'),time:v('ab_t'),place:v('ab_l'),contact:v('ab_c'),by:old?old.by:'অ্যাডমিন',uid:old?old.uid:'admin',ts:old?old.ts:Date.now()});
+  abClear(); say('ব্লাড ডোনেশন সেভ হয়েছে।');
+};
+const BND='০১২৩৪৫৬৭৮৯';
+const toAsc=s=>String(s).replace(/[০-৯]/g,d=>BND.indexOf(d));
+const toBn=s=>String(s).replace(/[0-9]/g,d=>BND[+d]);
+function minOf(t){const m=toAsc(t||'').split('/')[0].trim().match(/^(\d{1,2}):(\d{2})$/);return m?(+m[1])*60+(+m[2]):null;}
+function fmtMin(m){m=((m%1440)+1440)%1440;return toBn(Math.floor(m/60)+':'+String(m%60).padStart(2,'0'));}
+function reversedTimes(stops){
+  const ts=stops.map(x=>minOf(x.time));
+  let last=null; for(let i=ts.length-1;i>=0;i--){if(ts[i]!==null){last=ts[i];break;}}
+  return stops.map((x,i)=>(ts[i]===null||last===null)?'':fmtMin(1020+(last-ts[i])));
+}
+function dirLabel(r){const rev=dirOf(r);const auto=!r.mode||r.mode==='auto';return (rev?'উল্টো: শেষ স্টপ থেকে শুরু':'সাধারণ: প্রথম স্টপ থেকে শুরু')+(auto?' (অটো, এখন '+new Date().getHours()+'টা)':' (ম্যানুয়াল)');}
+function dirOf(r){const m=(r&&r.mode)||'auto';if(m==='reverse')return true;if(m==='normal')return false;const h=new Date().getHours();return h>=15||h<6;}
+
+$('mb').onclick=()=>{$('drawer').hidden=false;};
+$('dx').onclick=()=>{$('drawer').hidden=true;};
+$('sl').onclick=()=>{$('slist').hidden=false;};
+$('slx').onclick=()=>{$('slist').hidden=true;};
+db.collection('profiles').onSnapshot(s=>{profilesA=rows(s);renderStudents();});
+function renderStudents(){
+  const g={};
+  profilesA.forEach(p=>{const d=p.dept||'অন্যান্য';(g[d]=g[d]||[]).push(p);});
+  $('slc').innerHTML=Object.keys(g).sort().map(d=>`<h4>${esc(d)} (${g[d].length} জন)</h4>`+g[d].map(p=>`<div class="it">${esc(p.name)} · আইডি ${esc(p.idv)} · ${esc(p.phone||'')} · ${esc(p.batch||'')} ${esc(p.shift||'')}</div>`).join('')).join('')||'<div class="muted">কোনো অ্যাকাউন্ট নেই</div>';
+}
+let devPhoto=null;
+$('dph').onchange=()=>{
+  const f=$('dph').files[0]; if(!f)return;
+  const img=new Image();
+  img.onload=()=>{const m=160/Math.max(img.width,img.height);const c=document.createElement('canvas');c.width=Math.round(img.width*m);c.height=Math.round(img.height*m);c.getContext('2d').drawImage(img,0,0,c.width,c.height);devPhoto=c.toDataURL('image/jpeg',0.8);$('dpm').textContent='ছবি প্রস্তুত';URL.revokeObjectURL(img.src);};
+  img.src=URL.createObjectURL(f);
+};
+$('dsv').onclick=async()=>{
+  if(!curId)return say('আগে রুট বেছে নিন।');
+  const r=routes[curId]||{};
+  await db.collection('routes').doc(curId).set({name:r.name,stops:r.stops||[],mode:r.mode||'auto',driverName:$('dname').value.trim(),driverPhone:$('dphone').value.trim()});
+  say('চালকের তথ্য সেভ হয়েছে।');
+};
+$('rcopy').onclick=()=>{const t=$('rules');t.select();try{navigator.clipboard.writeText(t.value).then(()=>say('রুলস কপি হয়েছে।'),()=>{document.execCommand('copy');say('রুলস কপি হয়েছে।');});}catch(e){document.execCommand('copy');say('রুলস কপি হয়েছে।');}};
+$('dsave').onclick=async()=>{
+  const n=$('dn').value.trim(); if(!n)return say('ডেভেলপারের নাম লিখুন।');
+  await db.collection('dev').doc('main').set({name:n,phone:$('dp').value.trim(),whatsapp:$('dwa').value.trim(),facebook:$('dfb').value.trim(),photo:devPhoto||''});
+  say('ডেভেলপার তথ্য সেভ হয়েছে।');
+};
+db.collection('dev').onSnapshot(s=>{
+  const d=rows(s).find(x=>x.id==='main'); if(!d)return;
+  if(!$('dn').value)$('dn').value=d.name||'';
+  if(!$('dp').value)$('dp').value=d.phone||'';
+  if(!$('dwa').value)$('dwa').value=d.whatsapp||'';
+  if(!$('dfb').value)$('dfb').value=d.facebook||'';
+  if(devPhoto===null)devPhoto=d.photo||'';
+});
+setInterval(()=>{drawTrack();drawAll();},30000);
+})();
+</script>
+</body></html>
