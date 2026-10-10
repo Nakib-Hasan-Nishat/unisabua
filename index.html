@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>বাস ট্র্যাকার</title>
+<style>
+:root{--bg:#fff;--fg:#111;--mut:#666;--ac:#dc2626;--ok:#16a34a;--warn:#d97706;--road:#2f3136}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#111;--fg:#eee;--mut:#999;--road:#1c1d21}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+header{background:var(--ac);color:#fff;padding:12px 16px;font-weight:600}
+main{padding:12px 16px}
+select,button{font:inherit;width:100%;padding:11px;border-radius:8px;border:1px solid #bbb;margin-top:8px;background:var(--bg);color:var(--fg)}
+button{background:var(--ac);color:#fff;border:0;font-weight:600}
+button.sec{background:#555}
+.box{margin:12px 0;padding:10px;border-radius:8px;background:#8881;line-height:1.6}
+.jam{color:var(--warn);font-weight:700}.ok{color:var(--ok);font-weight:700}
+.muted{color:var(--mut);font-size:13px}
+#line{margin:12px 0;position:relative}
+.r{display:grid;grid-template-columns:1fr 1fr 1fr;height:52px;align-items:stretch}
+.lf,.rt{display:flex;align-items:center;justify-content:center;text-align:center;padding:6px 8px;font-size:15px}
+.rt{color:var(--mut);font-size:14px;white-space:nowrap}
+.ct{position:relative;display:flex;align-items:center;justify-content:center}
+.ct:before{content:"";position:absolute;top:0;bottom:0;left:50%;width:44px;margin-left:-22px;background:var(--road);box-shadow:inset 3px 0 #555,inset -3px 0 #555}
+.ct:after{content:"";position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;background:repeating-linear-gradient(#f5f5f5 0 12px,transparent 12px 24px)}
+.node{position:relative;z-index:1;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid #9ca3af}
+.node.red{background:var(--ac);border-color:#fff;box-shadow:0 0 0 5px #dc262645}
+.node.green{background:var(--ok);border-color:#fff;box-shadow:0 0 0 5px #16a34a45}
+.here{color:var(--ac);font-weight:700}
+.moving{color:var(--ok);font-weight:700}
+.cur .lf{font-weight:700}
+#bus{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:20px;color:#fff;z-index:3;box-shadow:0 0 0 4px #fff,0 2px 8px #0005;transition:top 1s linear,background .4s}
+#bus.halt{background:var(--ac)}#bus.go{background:var(--ok)}
+button.hb{width:auto;margin:0;padding:6px 10px;background:#fff3;color:#fff;border:0;border-radius:8px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sheet{position:fixed;inset:0;background:#0007;display:flex;align-items:flex-end;z-index:9}
+.sheet[hidden]{display:none}
+.sbox{background:var(--bg);color:var(--fg);width:100%;max-height:80vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px}
+.sbox input{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #bbb;font:inherit;background:var(--bg);color:var(--fg)}
+.sbox h4{margin:12px 0 4px}.it{padding:8px 0;border-bottom:1px solid #8883;font-size:14px}
+.sbox button.jb{width:auto;display:inline-block;margin:0 0 0 8px;padding:5px 10px;font-size:13px}
+.sbox button#ps{margin-top:8px}
+.row2{display:flex;gap:8px}.row2 input{flex:1;min-width:0;padding:10px;border-radius:8px;border:1px solid #bbb;font:inherit;background:var(--bg);color:var(--fg)}
+.row2 button{width:auto;padding:10px 14px;margin:0}
+.sbox select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #bbb;font:inherit;background:var(--bg);color:var(--fg)}
+.row2 button.sb{background:#555}.row2 button.on2{background:var(--ok)}
+.it button.rb{width:auto;display:inline-block;padding:2px 8px;margin:0 6px 0 6px;font-size:12px}
+#cflt,#mystop{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #bbb;font:inherit;background:var(--bg);color:var(--fg)}
+button.hb{width:auto;margin:0;padding:6px 10px;background:#fff3;color:#fff;border:0;border-radius:8px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sheet{position:fixed;inset:0;background:#0007;display:flex;align-items:flex-end;z-index:9}
+.sheet[hidden]{display:none}
+.sbox{background:var(--bg);color:var(--fg);width:100%;max-height:85vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px}
+.sbox h4{margin:12px 0 4px}.it{padding:8px 0;border-bottom:1px solid #8883;font-size:14px}
+.sbox input,.sbox select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #bbb;font:inherit;background:var(--bg);color:var(--fg)}
+.sbox button.jb{width:auto;display:inline-block;margin:0 0 0 8px;padding:5px 10px;font-size:13px}
+#seatrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 0}
+#seatrow[hidden]{display:none}
+#seatrow button.sb{width:100%;margin:0;padding:12px 6px;font-size:15px;text-align:center;border-radius:8px}
+#seatrow button.sb.on2{background:var(--ok)}
+.dev{display:flex;gap:12px;align-items:center;padding:8px 0}
+.dev img{width:64px;height:64px;border-radius:50%;object-fit:cover}
+.lnk a{margin-right:14px;color:var(--ac);font-weight:600}
+.drv{margin-top:4px;color:var(--fg)}
+.drv a{color:var(--ac);font-weight:600}
+body.night{--bg:#111;--fg:#eee;--mut:#999;--road:#1c1d21}
+.sbox{padding:18px 16px 26px}
+.sbox h4{font-size:15px;color:var(--ac);margin:20px 0 8px;display:flex;align-items:center;gap:8px}
+.sbox h4:before{content:"";width:4px;height:16px;background:var(--ac);border-radius:2px}
+.sbox .it{background:#8881;border:0;border-radius:12px;padding:10px 12px;margin:6px 0;font-size:14px;line-height:1.5}
+.toolbar{display:flex;gap:8px;align-items:center;background:#8881;border-radius:14px;padding:8px;margin:8px 0 12px}
+.toolbar button{flex:1;margin:0;padding:10px 0;border-radius:10px;font-size:15px;font-weight:600;background:var(--bg);color:var(--fg);border:1px solid #8883}
+.toolbar button.icon{flex:0 0 52px;font-size:20px}
+.swatch{display:flex;gap:14px;justify-content:center;padding:4px 0 6px}
+.swatch button.cl{width:38px;height:38px;flex:0 0 38px;border-radius:50%;padding:0;margin:0;border:3px solid var(--bg);box-shadow:0 0 0 1px #0004}
+.swatch button.cl.on{box-shadow:0 0 0 3px var(--fg)}
+.sbox button{border-radius:12px}
+.sbox button.jb{border-radius:8px}
+:root[data-theme=light]{--bg:#fff;--fg:#111;--mut:#666;--road:#2f3136}
+:root[data-theme=dark]{--bg:#111;--fg:#eee;--mut:#999;--road:#1c1d21}
+.uni{font-size:10px;line-height:1.25;text-align:center;font-weight:600;letter-spacing:.3px}
+.how{margin:10px 0;border-radius:12px;background:#8881;padding:10px 12px;font-size:14px}
+.how summary{cursor:pointer;font-weight:700;color:var(--ac)}
+.how ol{padding-left:20px;margin:8px 0}
+.how li{margin:4px 0;line-height:1.5}
+</style></head>
+<body>
+<header><button class="hb" id="mb">☰ মেনু</button><span class="uni">সাউথ<br>এশিয়া<br>ইউনিভার্সিটি</span><button class="hb" id="ab">অ্যাকাউন্ট</button></header>
+<main>
+<select id="route"><option value="">রুট বেছে নিন</option></select>
+<button id="go">আমি এই বাসে উঠেছি</button>
+<button id="leave" class="sec" hidden>নেমে গেছি</button>
+<div class="muted" id="gpsinfo" style="margin:6px 0"></div>
+<details class="how"><summary>লোকেশন ট্র্যাক কীভাবে কাজ করে?</summary>
+<ol>
+<li>রুট বেছে নিন।</li>
+<li>"আমি এই বাসে উঠেছি" চাপলেই শুধু আপনার ফোনের GPS চালু হবে। তখন ফোন প্রতি ১০ সেকেন্ডে বাসের অবস্থান পাঠায়।</li>
+<li>বাস কোনো স্টপের ১০০ মিটারের মধ্যে এলে সেখানে আছে ধরা হয়। স্টপ ছাড়লে "ছেড়েছে" দেখায়।</li>
+<li>বাস ২ মিনিট একই জায়গায় থামলে "জ্যাম" দেখায়।</li>
+<li>পরের স্টপের দূরত্ব ও আনুমানিক সময় লাইভ হিসাব হয়।</li>
+<li>"নেমে গেছি" চাপলে শেয়ার বন্ধ হয়।</li>
+</ol>
+<div class="muted">GPS চালু করতে ব্রাউজারে লোকেশন অনুমতি দিন এবং ফোনের Location চালু রাখুন।</div>
+</details>
+<div class="row2" id="seatrow" hidden><button class="sb" data-s="খালি">সিট খালি</button><button class="sb" data-s="মাঝারি">মাঝারি</button><button class="sb" data-s="পূর্ণ">পূর্ণ</button></div>
+<div class="box" id="alarmBox">
+<h4>গন্তব্য ও অ্যালার্ম</h4>
+<select id="mystop"><option value="">গন্তব্য স্টপ বেছে নিন</option></select>
+<select id="aoff"><option value="1">১ স্টপ আগে জানাও</option><option value="2">২ স্টপ আগে জানাও</option><option value="3">৩ স্টপ আগে জানাও</option></select>
+<button id="asave">সেভ করুন</button>
+<div class="muted" id="asm"></div>
+<div id="myalarm"></div>
+</div>
+<div class="box" id="st">লোড হচ্ছে...</div>
+<div class="muted" id="dirlbl" style="margin-top:10px"></div>
+<div id="line"><div id="rows"></div><div id="bus"></div></div>
+</main>
+<div id="sheet" class="sheet" hidden><div class="sbox">
+<button id="sx" class="hb" style="float:right;color:var(--fg);background:#8883">✕</button>
+<div id="alerts"></div>
+<h4>রুট গ্রুপ চ্যাট</h4>
+<div class="box" id="msgs" style="max-height:220px;overflow:auto"></div>
+<div class="row2"><input id="mtxt" placeholder="মেসেজ লিখুন"><button id="msend">পাঠান</button></div>
+<div class="muted" id="mhint"></div>
+<h4>সেটিংস</h4>
+<div class="toolbar"><button id="fsm" title="ছোট">A−</button><button id="fsp" title="বড়">A+</button><button id="nm" class="icon" title="দিন/রাত">🌙</button><button id="lg" title="ভাষা">English</button></div>
+<div class="swatch"><button class="cl" data-c="#dc2626" style="background:#dc2626" title="লাল"></button><button class="cl" data-c="#2563eb" style="background:#2563eb" title="নীল"></button><button class="cl" data-c="#16a34a" style="background:#16a34a" title="সবুজ"></button><button class="cl" data-c="#7c3aed" style="background:#7c3aed" title="বেগুনি"></button></div>
+<div id="sc"></div>
+</div></div>
+<div id="accSheet" class="sheet" hidden><div class="sbox"><button id="ax" class="hb" style="float:right;color:var(--fg);background:#8883">✕</button><div id="acc"></div></div></div>
+<!--LOCALFALLBACK-->
+<script>
+/* Offline/standalone fallback: used when the file is opened or downloaded without the hosting service.
+   Stores data in this browser (localStorage), so menus, accounts and forms keep working on this device. */
+(function(){
+  if (window.claude) return;
+  const KEY = 'bus_local_';
+  const subs = {};
+  function read(path){ try { return JSON.parse(localStorage.getItem(KEY + path) || '{}'); } catch (e) { return {}; } }
+  function write(path, o){ try { localStorage.setItem(KEY + path, JSON.stringify(o)); } catch (e) {} (subs[path] || []).forEach(f => f()); }
+  function emit(path, cb){ const o = read(path); setTimeout(() => cb(Object.keys(o).map(k => Object.assign({ id: k }, o[k]))), 0); }
+  window.addEventListener('storage', e => { if (e.key && e.key.indexOf(KEY) === 0) (subs[e.key.slice(KEY.length)] || []).forEach(f => f()); });
+  const clone = d => JSON.parse(JSON.stringify(d || {}));
+  window.claude = {
+    use: async (name) => {
+      if (name === 'user') return { id: async () => { try { return localStorage.getItem('bus_uid'); } catch (e) { return null; } } };
+      if (name !== 'db') return null;
+      return { collection(path){ return {
+        doc(id){ return {
+          set(d){ const o = read(path); o[id] = clone(d); write(path, o); return Promise.resolve(); },
+          update(d){ const o = read(path); o[id] = Object.assign({}, o[id] || {}, clone(d)); write(path, o); return Promise.resolve(); },
+          delete(){ const o = read(path); delete o[id]; write(path, o); return Promise.resolve(); }
+        }; },
+        onSnapshot(cb){ (subs[path] = subs[path] || []).push(() => emit(path, cb)); emit(path, cb); }
+      }; } };
+    }
+  };
+})();
+</script>
+<!--/LOCALFALLBACK-->
+<script>
+(async()=>{
+const $=id=>document.getElementById(id);
+const st=$('st'), sel=$('route'), go=$('go'), leave=$('leave'), line=$('line');
+const db=await claude.use('db');
+if(!db){st.textContent='এই পেজে ডেটা সংযোগ নেই।';return;}
+
+let routes={}, live={}, watchId=null, anchor=null, anchorT=0, atStop=null, lastSend=0;
+const dist=(a,b,c,d)=>{const R=6371e3,t=Math.PI/180,x=(c-a)*t,y=(d-b)*t,h=Math.sin(x/2)**2+Math.cos(a*t)*Math.cos(c*t)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));};
+const rows=s=>(s.docs||s||[]).map(d=>({id:d.id,...(typeof d.data==='function'?d.data():d)}));
+const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const geoMsg=e=>e&&e.code===1?'লোকেশন অনুমতি নেই। ফোনের সেটিংসে ব্রাউজারকে লোকেশন অনুমতি দিন।':e&&e.code===3?'লোকেশন পেতে সময় লাগছে। বাইরে গিয়ে আবার চেষ্টা করুন।':'লোকেশন পাওয়া যাচ্ছে না। ফোনের GPS (Location) চালু আছে কিনা দেখুন।';
+
+db.collection('routes').onSnapshot(s=>{
+  routes={}; rows(s).forEach(r=>routes[r.id]=r);
+  routes=Object.assign({},DEFAULT_ROUTES,routes);
+  const keep=sel.value;
+  sel.innerHTML='<option value="">রুট বেছে নিন</option>'+Object.keys(routes).sort().map(k=>`<option value="${k}">${routes[k].name||k}</option>`).join('');
+  sel.value=keep; draw(); fillMyStop(); checkAlarm();
+});
+db.collection('live').onSnapshot(s=>{
+  live={}; rows(s).forEach(r=>live[r.id]=r); draw(); checkAlarm();
+});
+sel.onchange=()=>{draw();renderChat();renderAlerts();fillMyStop();checkAlarm();refreshMenu();};
+
+function busPos(r,l,idx,mv){
+  const H=52;
+  if(idx<0)return -H/2;
+  let p=0;
+  if(mv){
+    const a=(r.stops||[])[idx], b=(r.stops||[])[idx+1];
+    if(a&&b&&a.lat!=null&&b.lat!=null&&l.lat!=null){
+      const tot=dist(a.lat,a.lng,b.lat,b.lng), rem=dist(l.lat,l.lng,b.lat,b.lng);
+      p=tot>0?Math.min(1,Math.max(0,1-rem/tot)):0.5;
+    } else p=b?0.5:0;
+  }
+  return (idx+p)*H+H/2;
+}
+function placeBus(r,l,idx,mv,has){
+  const bus=document.getElementById('bus');
+  if(!has){bus.style.display='none';return;}
+  bus.style.display='flex';
+  bus.className=mv?'go':'halt';
+  bus.textContent='🚌';
+  bus.style.top=busPos(r,l,idx,mv)+'px';
+}
+function draw(){
+  const id=sel.value, rowsEl=$('rows');
+  rowsEl.innerHTML='';
+  if(!id){st.textContent='';$('dirlbl').textContent='';$('bus').style.display='none';return;}
+  const r=routes[id];
+  if(!r){st.textContent='অ্যাডমিন এখনো রুট সেট করেনি।';$('bus').style.display='none';return;}
+  const l=live[id]||{};
+  const has=!!l.ts, idx=has?(l.lastIdx??-1):-1, mv=has&&!!l.moving;
+  const ord=orderedOf(r), n=ord.length, rev=dirOf(r);
+  const revT=rev?reversedTimes(r.stops):null;
+  $('dirlbl').innerHTML=esc(dirLabel(r))+driverHtml(r);
+  const dIdx=idx<0?-1:(rev?n-1-idx:idx);
+  rowsEl.innerHTML=ord.map((x,i)=>{
+    const at=has&&i===dIdx&&!mv;
+    return `<div class="r${at?' cur':''}"><div class="lf">${esc(x.name)}</div><div class="ct"><span class="node${at?' red':''}"></span></div><div class="rt">${esc(rev?(revT[n-1-i]||''):(x.time||''))}</div></div>`;
+  }).join('');
+  placeBus({stops:ord},l,dIdx,mv,has);
+  if(!has){st.innerHTML='এই বাসের লাইভ লোকেশন এখনো নেই।<div class="muted">কেউ বাসে উঠে শেয়ার শুরু করলে এখানে দেখাবে।</div>';return;}
+  const mins=Math.round((Date.now()-l.ts)/60000);
+  let nextTxt='';
+  const ns=ord[dIdx+1];
+  if(ns&&ns.lat!=null&&l.lat!=null){
+    const d=Math.round(dist(l.lat,l.lng,ns.lat,ns.lng));
+    nextTxt=`<div>পরের স্টপ: <b>${esc(ns.name)}</b> · প্রায় ${d} মিটার · আনুমানিক ${Math.max(1,Math.round(d/250))} মিনিট</div>`;
+  } else if(!ns){ nextTxt='<div>এটি শেষ স্টপ।</div>'; }
+  st.innerHTML=(mins>5?'<div class="muted">পুরোনো তথ্য</div>':'')
+    +(rev?'<div class="muted">দিক: উল্টো (শেষ স্টপ থেকে শুরু)</div>':'')
+    +(l.jam?'<div class="jam">⚠️ জ্যামে আছে (২ মিনিটের বেশি দাঁড়িয়ে)</div>':'<div class="ok">✅ চলছে</div>')
+    +nextTxt
+    +(l.departed?`<div>সর্বশেষ ছাড়ল: ${esc(l.departed.stop)}</div>`:'')+(l.seat?`<div>সিট: ${esc(l.seat)}</div>`:'')
+    +`<div class="muted">শেষ আপডেট: ${mins<1?'এইমাত্র':mins+' মিনিট আগে'}</div>`;
+}
+
+go.onclick=()=>{
+  if(!sel.value){st.textContent='আগে রুট বেছে নিন';return;}
+  if(!navigator.geolocation){st.textContent='এই ব্রাউজারে GPS নেই';return;}
+  anchor=null; atStop=null;
+  watchId=navigator.geolocation.watchPosition(onPos,e=>{st.textContent=geoMsg(e);},{enableHighAccuracy:true,maximumAge:3000});
+  go.hidden=true; leave.hidden=false; $('seatrow').hidden=false; st.textContent='আপনার লোকেশন শেয়ার হচ্ছে...';
+  $('gpsinfo').textContent='🛰️ GPS চালু হচ্ছে... অনুমতি চাইলে "অনুমতি দিন" চাপুন।';
+};
+leave.onclick=()=>{
+  navigator.geolocation.clearWatch(watchId); watchId=null;
+  go.hidden=false; leave.hidden=true; $('seatrow').hidden=true; st.textContent='ধন্যবাদ, ট্রিপ শেষ।'; $('gpsinfo').textContent='';
+};
+
+function onPos(p){
+  const lat=p.coords.latitude, lng=p.coords.longitude, now=Date.now();
+  $('gpsinfo').textContent='✅ লোকেশন শেয়ার হচ্ছে · নির্ভুলতা প্রায় '+Math.round(p.coords.accuracy||0)+' মিটার';
+  if(!anchor||dist(anchor.lat,anchor.lng,lat,lng)>25){anchor={lat,lng};anchorT=now;}
+  const jam=now-anchorT>=120000;
+  const id=sel.value, r=routes[id], prev=live[id]||{};
+  let lastIdx=prev.lastIdx??-1, moving=!!prev.moving, departed=prev.departed||null;
+  let near=null;
+  ((r&&r.stops)||[]).forEach((s,i)=>{if(s.lat!=null&&dist(lat,lng,s.lat,s.lng)<100)near=i;});
+  if(near!==null){atStop=near;lastIdx=near;moving=false;}
+  else if(atStop!==null&&r){departed={stop:r.stops[atStop].name,at:now};lastIdx=atStop;moving=true;atStop=null;}
+  if(now-lastSend<10000)return;
+  lastSend=now;
+  db.collection('live').doc(id).set({lat,lng,ts:now,jam,stillSince:anchorT,lastIdx,moving,departed,atStop,seat:seatState});
+}
+// ===== Account, route groups, notices =====
+const usr=await claude.use('user'); let uid=null;
+try{uid=usr?await usr.id():null;}catch(e){}
+if(!uid){try{uid=localStorage.getItem('bus_uid');if(!uid){uid='g'+Math.random().toString(36).slice(2,12)+Date.now().toString(36);localStorage.setItem('bus_uid',uid);}}catch(e){uid='g'+Math.random().toString(36).slice(2,12);}}
+let profile=null, mine=new Set(), counts={}, info={}, sheetKind='';
+const $sheet=$('sheet'), $sc=$('sc');
+function openSheet(kind,html){sheetKind=kind;$sc.innerHTML=html;$sheet.hidden=false;if(typeof S!=='undefined'&&S.en&&typeof translate==='function')translate(true);}
+function listHtml(arr,empty){return arr.length?arr.map(x=>`<div class="it">${esc(x)}</div>`).join(''):`<div class="muted">${empty}</div>`;}
+function groupsHtml(){return Object.keys(routes).sort().map(k=>`<div class="it">${esc(routes[k].name||k)} · সদস্য ${counts[k]||0} <button class="jb" data-r="${k}">${mine.has(k)?'ছাড়ুন':'যোগ দিন'}</button></div>`).join('')||'<div class="muted">রুট নেই</div>';}
+function accHtml(){
+  if(!uid)return '<div class="muted">অ্যাকাউন্ট চালু নেই।</div>';
+  if(profile)return `<h4>আমার অ্যাকাউন্ট</h4><div class="it">নাম: ${esc(profile.name)}</div><div class="it">আইডি: ${esc(profile.idv)}</div><div class="it">ডিপার্টমেন্ট: ${esc(profile.dept)}</div><div class="it">ফোন: ${esc(profile.phone||'')}</div><div class="it">ব্যাচ: ${esc(profile.batch||'')} · ${esc(profile.shift||'')}</div><h4>রুটের গ্রুপ</h4>${groupsHtml()}`;
+  return `<h4>অ্যাকাউন্ট খুলুন</h4><input id="pn" placeholder="নাম"><input id="pi" placeholder="শিক্ষার্থী/কর্মকর্তা আইডি"><input id="pd" placeholder="ডিপার্টমেন্ট"><input id="pp" placeholder="ফোন নাম্বার"><input id="pb" placeholder="কত তম ব্যাচ"><select id="psh"><option value="রেগুলার">রেগুলার</option><option value="ইভিনিং">ইভিনিং</option></select><button id="ps">সেভ করুন</button>`;
+}
+function refreshSheet(){if(!$('accSheet').hidden)$('acc').innerHTML=accHtml();}
+$('ab').onclick=()=>{$('acc').innerHTML=accHtml();$('accSheet').hidden=false;};
+$('ax').onclick=()=>{$('accSheet').hidden=true;};
+$('sx').onclick=()=>{$sheet.hidden=true;};
+$('acc').addEventListener('click',async e=>{
+  if(e.target.id==='ps'){const n=$('pn').value.trim(),i=$('pi').value.trim(),d=$('pd').value.trim(),p=$('pp').value.trim(),b=$('pb').value.trim(),sh=$('psh').value;if(!n||!i||!p||!uid)return;await db.collection('profiles').doc(uid).set({name:n,idv:i,dept:d,phone:p,batch:b,shift:sh});return;}
+  const r=e.target.dataset.r; if(!r||!uid)return;
+  const docId=r+'__'+uid;
+  if(mine.has(r))await db.collection('members').doc(docId).delete();
+  else await db.collection('members').doc(docId).set({routeId:r,uid,name:profile?profile.name:'',shift:profile?profile.shift||'':'',batch:profile?profile.batch||'':''});
+});
+db.collection('profiles').onSnapshot(s=>{profile=rows(s).find(x=>x.id===uid)||null;refreshSheet();renderChat();});
+db.collection('members').onSnapshot(s=>{const all=rows(s);mine=new Set(all.filter(x=>x.uid===uid).map(x=>x.routeId));counts={};all.forEach(x=>counts[x.routeId]=(counts[x.routeId]||0)+1);refreshSheet();renderChat();});
+db.collection('info').onSnapshot(s=>{info=rows(s).find(x=>x.id==='main')||{};});
+let msgs=[];
+function renderChat(){
+  const id=sel.value;
+  const list=msgs.filter(m=>m.routeId===id).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-50);
+  $('msgs').innerHTML=!id?'':list.length?list.map(m=>`<div class="it"><b>${esc(m.name||'')}</b>: ${esc(m.text)}${m.replyTo?`<div class="muted">↪ ${esc(m.replyTo)}</div>`:''}<div class="muted">${new Date(m.ts).toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'})} <button class="rb" data-t="${esc(m.text.slice(0,60)).replace(/"/g,'&quot;')}">উত্তর</button></div></div>`).join(''):'<div class="muted">এখনো কোনো মেসেজ নেই</div>';
+  const can=!!profile&&!!id&&mine.has(id);
+  $('mtxt').disabled=!can; $('msend').disabled=!can;
+  $('mhint').textContent=!profile?'মেসেজ করতে অ্যাকাউন্ট খুলুন (ডান পাশে "অ্যাকাউন্ট")':(id&&!mine.has(id))?'মেসেজ করতে এই রুটের গ্রুপে যোগ দিন':(replyTxt?'উত্তর দিচ্ছেন: '+replyTxt:'');
+  $('msgs').scrollTop=$('msgs').scrollHeight;
+}
+db.collection('messages').onSnapshot(s=>{msgs=rows(s);renderChat();});
+$('msend').onclick=async()=>{
+  const text=$('mtxt').value.trim(), id=sel.value;
+  if(!text||!profile||!uid||!mine.has(id))return;
+  const ts=Date.now();
+  await db.collection('messages').doc(id+'__'+ts+'__'+uid.slice(0,6)).set({routeId:id,name:profile.name,text:text.slice(0,500),ts,uid,shift:profile.shift||'',batch:profile.batch||'',replyTo:replyTxt||null});
+  replyTxt=null;
+  $('mtxt').value='';
+};
+let seatState=null, alerts=[], lost=[], fbA=[];
+function listOf(t){return (t||'').split('\n').filter(Boolean);}
+function lfHtml(){return lost.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,10).map(x=>`<div class="it">${esc(x.text)} <span class="muted">— ${esc(x.name||'')}</span></div>`).join('')||'<div class="muted">কিছু নেই</div>';}
+function menuHtml(){return `<h4>নোটিশ বোর্ড</h4>${listHtml(noticeTexts(),'এই রুটে কোনো নোটিশ নেই')}<h4>ব্লাড ডোনেশন</h4><div id="bloodlist">${bloodList()}</div><button id="bdopen">ব্লাড ডোনেশন অনুরোধ দিন</button><h4>একাডেমিক ক্যালেন্ডার</h4>${listHtml(listOf(info.calendar),'তথ্য নেই')}<h4>জরুরি যোগাযোগ</h4>${listHtml(listOf(info.contacts),'তথ্য নেই')}<h4>হারানো-প্রাপ্ত</h4>${lfHtml()}<input id="lft" placeholder="কী হারিয়েছে বা পেয়েছেন"><button id="lfs">পোস্ট করুন</button><h4>কারপুলিং</h4>${carHtml()}<input id="cpt" placeholder="কোথা থেকে → কোথায়, সময়"><button id="cps">পোস্ট করুন</button><h4>ফিডব্যাক</h4><input id="fbt" placeholder="আপনার মতামত"><button id="fbs">পাঠান</button>${devBtnHtml()}`;}
+$('mb').onclick=()=>openSheet('menu',menuHtml());
+$sc.addEventListener('click',async e=>{
+  if(e.target.id==='lfs'){const t=$('lft').value.trim();if(!t)return;await db.collection('lostfound').doc(Date.now()+'_'+(uid||'g').slice(0,6)).set({text:t,name:profile?profile.name:'',ts:Date.now()});$('lft').value='';}
+  if(e.target.id==='fbs'){const t=$('fbt').value.trim();if(!t)return;await db.collection('feedback').doc(Date.now()+'_'+(uid||'g').slice(0,6)).set({routeId:sel.value||'',text:t,name:profile?profile.name:'অতিথি',ts:Date.now()});$('fbt').value='';}
+});
+function renderAlerts(){const id=sel.value;const list=alerts.filter(a=>a.routeId==='all'||a.routeId===id).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,3);$('alerts').innerHTML=list.map(a=>`<div class="box" style="background:#dc262622;border-left:4px solid var(--ac)">📢 ${esc(a.text)}</div>`).join('');}
+db.collection('alerts').onSnapshot(s=>{alerts=rows(s);renderAlerts();});
+db.collection('lostfound').onSnapshot(s=>{lost=rows(s);refreshMenu();});
+db.collection('feedback').onSnapshot(s=>{fbA=rows(s);});
+db.collection('info').onSnapshot(s=>{refreshMenu();});
+function refreshMenu(){if(!$sheet.hidden&&sheetKind==='menu')openSheet('menu',menuHtml());}
+document.querySelectorAll('#seatrow .sb').forEach(b=>b.onclick=()=>{seatState=b.dataset.s;document.querySelectorAll('#seatrow .sb').forEach(x=>x.classList.toggle('on2',x===b));});
+function dirOf(r){const m=(r&&r.mode)||'auto';if(m==='reverse')return true;if(m==='normal')return false;const h=new Date().getHours();return h>=15||h<6;}
+function dirLabel(r){const rev=dirOf(r);const auto=!r.mode||r.mode==='auto';return (rev?'উল্টো: শেষ স্টপ থেকে শুরু':'সাধারণ: প্রথম স্টপ থেকে শুরু')+(auto?' (অটো, এখন '+new Date().getHours()+'টা)':' (ম্যানুয়াল)');}
+const BND='০১২৩৪৫৬৭৮৯';
+const toAsc=s=>String(s).replace(/[০-৯]/g,d=>BND.indexOf(d));
+const toBn=s=>String(s).replace(/[0-9]/g,d=>BND[+d]);
+function minOf(t){const m=toAsc(t||'').split('/')[0].trim().match(/^(\d{1,2}):(\d{2})$/);return m?(+m[1])*60+(+m[2]):null;}
+function fmtMin(m){m=((m%1440)+1440)%1440;return toBn(Math.floor(m/60)+':'+String(m%60).padStart(2,'0'));}
+function reversedTimes(stops){
+  const ts=stops.map(x=>minOf(x.time));
+  let last=null; for(let i=ts.length-1;i>=0;i--){if(ts[i]!==null){last=ts[i];break;}}
+  return stops.map((x,i)=>(ts[i]===null||last===null)?'':fmtMin(1020+(last-ts[i])));
+}
+function driverHtml(r){if(!r.driverName&&!r.driverPhone)return '';return `<div class="drv">চালক: <b>${esc(r.driverName||'')}</b> · <a href="tel:${esc(String(r.driverPhone||'').replace(/\s/g,''))}">${esc(r.driverPhone||'')}</a></div>`;}
+function orderedOf(r){const a=((r&&r.stops)||[]).slice();return dirOf(r)?a.reverse():a;}
+const DEFAULT_ROUTES=(function(){
+const SEED={
+ route1:{name:'রুট ১',stops:[
+  ['সাইনবোর্ড','৯:০০ / ৯:০০'],['সায়েদাবাদ','৯:০৫ / ৯:১০'],['মানিকনগর','৯:১০ / ৯:১৫'],['খিলগাঁও','৯:১৫ / ৯:২০'],
+  ['মালিবাগ','৯:২৫ / ৯:৩০'],['রামপুরা','৯:৩৫ / ৯:৪৫'],['বাড্ডা','৯:৪০ / ৯:৫০'],['শাহজাদপুর','৯:৪৫ / ৯:৫৫'],
+  ['গুলশান ২','৯:৫০ / ৮:০৫'],['মহাখালী','৮:০০ / ৮:১৫'],['আসাদগেট','৮:৩০ / ৮:৪৫'],['শ্যামলী','৮:৩৫ / ৮:৫০'],
+  ['আমিনবাজার','৯:০০ / ৯:২০'],['ইউনিভার্সিটি','']]},
+ route2:{name:'রুট ২',stops:[
+  ['গাজীপুর চৌরাস্তা','৯:০০ / ৯:০০'],['টঙ্গী কলেজ গেট','৯:২৫ / ৯:২৫'],['আব্দুল্লাহপুর','৯:৪০ / ৯:৪৫'],['হাউজ বিল্ডিং','৯:৪৫ / ৯:৫০'],
+  ['জসিম উদ্দিন','৯:৫০ / ৯:৫৫'],['বিমানবন্দর','৯:৫৫ / ৮:০০'],['খিলক্ষেত','৮:০০ / ৮:১০'],['বিশ্বরোড','৮:০৫ / ৮:১৫'],
+  ['ইসিবি','৮:১৫ / ৮:২০'],['কালশী','৮:২০ / ৮:২৫'],['মিরপুর ১১','৮:২৫ / ৮:৩০'],['মিরপুর ১০','৮:৩০ / ৮:৪০'],
+  ['আমিনবাজার','৯:০০ / ৯:১৫']]},
+ route3:{name:'রুট ৩',stops:[
+  ['চন্দ্রা','৯:১০'],['জিরানী','৯:২০'],['শ্রীপুর','৯:২৫'],['বাইপাইল','৭:০০'],['নবীনগর','৮:০০'],['বিশমাইল','৮:০৫'],
+  ['জাহাঙ্গীর নগর গেট','৮:১০'],['সি এম বি','৮:১৫'],['রেডিও কলোনি','৮:২০'],['পাকিজা','৮:০০'],['গেণ্ডা','৮:০৫'],
+  ['ব্যাংক টাউন','৮:৪০'],['উলাইল','৮:৪৫'],['ফুলবাড়িয়া','৮:৫০'],['হেমায়েতপুর','৮:৫৫'],['আলমনগর হাউজিং','৮:৫৮'],
+  ['বলিয়ারপুর','৯:০০'],['ইউনিভার্সিটি','৯:০৫']]},
+ route4:{name:'রুট ৪ (শুধু শুক্রবার)',stops:[
+  ['মাওনা','৯:০০'],['মাস্টারবাড়ী','৯:২০'],['বাঘাবাড়ী','৯:৩০'],['হুটাপাড়া','৯:৪০'],['ভবানীপুর','৯:৫০'],
+  ['চৌরাস্তা','৮:০০'],['টঙ্গী','৮:২০'],['কামারপাড়া','৮:৪৫'],['বেড়িবাঁধ','৮:৫০'],['আমিনবাজার','৮:৫৫'],['ইউনিভার্সিটি','৯:০০']]},
+ route5:{name:'রুট ৫',stops:[
+  ['রাজেন্দ্রপুর','৯:০০'],['চৌরাস্তা','৯:২০'],['নাওজোড়','৯:৩০'],['কোনাবাড়ী','৯:৪০'],['শফিপুর','৯:৫০'],
+  ['চন্দ্রা','৮:০০'],['নবীনগর','৮:২০'],['সাভার','৮:৩০'],['ইউনিভার্সিটি','৮:৪৫']]}
+};
+const o={};Object.keys(SEED).forEach(k=>o[k]={name:SEED[k].name,stops:SEED[k].stops.map(([n,t])=>({name:n,time:t,lat:null,lng:null}))});return o;})();
+let replyTxt=null, lastAlarm='', carp=[], notices=[], dev={};
+function devHtml(){
+  if(!dev.name)return '<h4>এপ ডেভেলপার</h4><div class="muted">তথ্য নেই</div>';
+  const wa=dev.whatsapp?`<a href="https://wa.me/${esc(String(dev.whatsapp).replace(/\D/g,''))}" target="_blank" rel="noopener">WhatsApp</a>`:'';
+  const fb=dev.facebook?`<a href="https://facebook.com/${esc(dev.facebook)}" target="_blank" rel="noopener">Facebook</a>`:'';
+  const img=(dev.photo&&String(dev.photo).startsWith('data:image'))?`<img src="${dev.photo}" alt="">`:'';
+  return `<h4>এপ ডেভেলপার</h4><div class="dev">${img}<div><b>${esc(dev.name)}</b><div class="muted">${esc(dev.phone||'')}</div><div class="lnk">${wa} ${fb}</div></div></div>`;
+}
+db.collection('dev').onSnapshot(s=>{dev=rows(s).find(x=>x.id==='main')||{};refreshMenu();});
+function noticeTexts(){return notices.filter(n=>n.routeId===sel.value).sort((a,b)=>(b.ts||0)-(a.ts||0)).map(n=>n.text);}
+db.collection('notices').onSnapshot(s=>{notices=rows(s);refreshMenu();});
+$('msgs').addEventListener('click',e=>{const b=e.target.closest('.rb');if(!b)return;replyTxt=b.dataset.t;renderChat();$('mtxt').focus();});
+function myStopKey(){return 'mystop_'+sel.value;}
+function fillMyStop(){
+  const r=routes[sel.value];
+  let cur='', off='2';
+  try{cur=localStorage.getItem(myStopKey())||'';off=localStorage.getItem('aoff_'+sel.value)||'2';}catch(e){}
+  $('mystop').innerHTML='<option value="">গন্তব্য স্টপ বেছে নিন</option>'+orderedOf(r).map(x=>`<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+  $('mystop').value=cur; $('aoff').value=off; $('asm').textContent='';
+}
+$('asave').onclick=()=>{const id=sel.value;if(!id){$('asm').textContent='আগে রুট বেছে নিন';return;}try{localStorage.setItem(myStopKey(),$('mystop').value);localStorage.setItem('aoff_'+id,$('aoff').value);}catch(e){}lastAlarm='';$('asm').textContent='সেভ হয়েছে';checkAlarm();};
+function checkAlarm(){
+  const box=$('myalarm'), id=sel.value, l=live[id]||{}, r=routes[id], my=$('mystop').value;
+  if(!box)return;
+  if(!id||!r||!my||!l.ts){box.innerHTML='';return;}
+  const myIdx=(r.stops||[]).findIndex(x=>x.name===my), idx=l.lastIdx??-1, away=dirOf(r)?idx-myIdx:myIdx-idx;
+  if(away>=1&&away<=(+$('aoff').value||2)){
+    box.innerHTML=`<div class="box" style="background:#16a34a22;border-left:4px solid var(--ok)">🔔 বাস আপনার স্টপ "${esc(my)}" থেকে ${away} স্টপ দূরে</div>`;
+    const key=id+'|'+idx;
+    if(lastAlarm!==key){lastAlarm=key;try{navigator.vibrate&&navigator.vibrate([300,150,300]);}catch(e){}}
+  } else box.innerHTML='';
+}
+function carHtml(){return carp.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,10).map(x=>`<div class="it">${esc(x.text)} <span class="muted">— ${esc(x.name||'')}</span></div>`).join('')||'<div class="muted">কোনো পোস্ট নেই</div>';}
+db.collection('carpool').onSnapshot(s=>{carp=rows(s);refreshMenu();});
+$sc.addEventListener('click',async e=>{
+  if(e.target.id==='cps'){const t=$('cpt').value.trim();if(!t)return;await db.collection('carpool').doc(Date.now()+'_'+(uid||'g').slice(0,6)).set({text:t,name:profile?profile.name:'',ts:Date.now()});$('cpt').value='';}
+});
+let blood=[], editB=null;
+function devBtnHtml(){return '<h4>এপ ডেভেলপার</h4><button id="devbtn">ডেভেলপার ও বর্তমান অপশন দেখুন</button>';}
+function optionsList(){return ['নোটিশ বোর্ড','একাডেমিক ক্যালেন্ডার','জরুরি যোগাযোগ','হারানো-প্রাপ্ত','কারপুলিং','ফিডব্যাক','সতর্কবার্তা','রুট গ্রুপ চ্যাট','গন্তব্য ও অ্যালার্ম','সিট পরিস্থিতি','অ্যাকাউন্ট','ব্লাড ডোনেশন'].map(x=>`<div class="it">• ${x}</div>`).join('');}
+function devSheetHtml(){return devHtml()+'<h4>বর্তমান অপশনসমূহ</h4>'+optionsList();}
+function bloodList(){return blood.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,30).map(b=>`<div class="it">🩸 রক্তের গ্রুপ: <b>${esc(b.group||'')}</b><br>💉 রক্তের পরিমাণ: ${esc(b.qty||'')}<br>🗓️ রক্তদানের তারিখ: ${esc(b.date||'')}<br>🕛 রক্তদানের সময়: ${esc(b.time||'')}<br>🏫 রক্তদানের স্থান: ${esc(b.place||'')}<br>রোগীর সমস্যা: ${esc(b.problem||'')}<br>যোগাযোগ: ${esc(b.contact||'')} <span class="muted">— ${esc(b.by||'')}</span>${b.uid&&b.uid===uid?`<div><button class="jb" data-be="${esc(b.id)}">সম্পাদনা</button><button class="jb" data-bd="${esc(b.id)}">মুছুন</button></div>`:''}</div>`).join('')||'<div class="muted">কোনো অনুরোধ নেই</div>';}
+function fillBlood(b){$('bp').value=b.problem||'';$('bg').value=b.group||'';$('bq').value=b.qty||'';$('bd').value=b.date||'';$('bt').value=b.time||'';$('bl').value=b.place||'';$('bc').value=b.contact||'';$('bsend').textContent='আপডেট করুন';}
+function bloodFormHtml(){return `<h4>ব্লাড ডোনেশন অনুরোধ</h4>
+<input id="bp" placeholder="রোগীর সমস্যা (যেমন: অপারেশন)">
+<select id="bg"><option value="">🩸 রক্তের গ্রুপ</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select>
+<input id="bq" placeholder="💉 রক্তের পরিমাণ (যেমন: ২ ব্যাগ)">
+<input id="bd" type="date" title="🗓️ রক্তদানের তারিখ"><input id="bt" type="time" title="🕛 রক্তদানের সময়">
+<input id="bl" placeholder="🏫 রক্তদানের স্থান">
+<input id="bc" placeholder="যোগাযোগ (ফোন নাম্বার)">
+<button id="bsend">অনুরোধ পাঠান</button>
+<h4>চলমান অনুরোধ</h4><div id="bloodlist">${bloodList()}</div>`;}
+function refreshBlood(){const b=$('bloodlist');if(b)b.innerHTML=bloodList();}
+db.collection('blood').onSnapshot(s=>{blood=rows(s);refreshBlood();});
+$sc.addEventListener('click',async e=>{
+  if(e.target.id==='devbtn'){openSheet('dev',devSheetHtml());return;}
+  if(e.target.id==='bdopen'){openSheet('blood',bloodFormHtml());return;}
+  if(e.target.dataset&&e.target.dataset.be){const b=blood.find(x=>x.id===e.target.dataset.be);if(!b)return;editB=b.id;openSheet('blood',bloodFormHtml());fillBlood(b);return;}
+  if(e.target.dataset&&e.target.dataset.bd){if(confirm('এই অনুরোধটি মুছবেন?'))await db.collection('blood').doc(e.target.dataset.bd).delete();return;}
+  if(e.target.id==='bsend'){
+    const v=k=>$(k).value.trim();
+    if(!profile)return alert('ব্লাড ডোনেশন অনুরোধ দিতে আগে অ্যাকাউন্ট খুলুন।');
+    if(!v('bp')||!v('bg')||!v('bq')||!v('bd')||!v('bl')||!v('bc'))return alert('সব ঘর পূরণ করুন।');
+    const old=editB?blood.find(x=>x.id===editB):null;
+    await db.collection('blood').doc(old?old.id:(Date.now()+'_'+(uid||'g').slice(0,6))).set({problem:v('bp'),group:v('bg'),qty:v('bq'),date:v('bd'),time:v('bt'),place:v('bl'),contact:v('bc'),by:old?old.by:profile.name,uid:old?old.uid:uid,ts:old?old.ts:Date.now()});
+    editB=null;
+    openSheet('blood',bloodFormHtml());
+  }
+});
+const EN={'ইউনিভার্সিটি বাস ট্র্যাকার':'University Bus Tracker','বাস ট্র্যাকার':'Bus Tracker','☰ মেনু':'☰ Menu','অ্যাকাউন্ট':'Account','রুট বেছে নিন':'Select route','আমি এই বাসে উঠেছি':'I boarded this bus','নেমে গেছি':'I got off','সিট খালি':'Seats free','মাঝারি':'Medium','পূর্ণ':'Full','নোটিশ বোর্ড':'Notice board','এই রুটে কোনো নোটিশ নেই':'No notices for this route','একাডেমিক ক্যালেন্ডার':'Academic calendar','জরুরি যোগাযোগ':'Emergency contacts','হারানো-প্রাপ্ত':'Lost & found','কারপুলিং':'Carpool','ফিডব্যাক':'Feedback','পাঠান':'Send','পোস্ট করুন':'Post','সেভ করুন':'Save','গন্তব্য ও অ্যালার্ম':'Destination & alarm','রুট গ্রুপ চ্যাট':'Route group chat','ব্লাড ডোনেশন':'Blood donation','এপ ডেভেলপার':'App developer','সেটিংস':'Settings','দিন/রাত':'Day/Night','মেসেজ লিখুন':'Type a message','আমার স্টপ (অ্যালার্মের জন্য)':'My stop (for alarm)','গন্তব্য স্টপ বেছে নিন':'Choose destination stop','বাস ও রুট':'Bus & route','বাসে উঠছি':'Boarding','সতর্কবার্তা':'Alerts','রুট':'Route','নোটিশ':'Notice','ব্লাড ডোনেশন অনুরোধ দিন':'Request blood donation','ডেভেলপার ও বর্তমান অপশন দেখুন':'Developer & options','বর্তমান অপশনসমূহ':'Current options','আগে রুট বেছে নিন':'Select a route first','লগইন করুন':'Log in','ডাটা পাওয়া যাচ্ছে না':'Data not available'};
+let S={}; try{S=JSON.parse(localStorage.getItem('bus_set')||'{}');}catch(e){}
+function saveS(){try{localStorage.setItem('bus_set',JSON.stringify(S));}catch(e){}}
+function translate(en){
+  const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT); let n;
+  while((n=w.nextNode())){
+    const t=n.nodeValue.trim();
+    if(en){ if(!n._bn && EN[t]){ n._bn=t; n.nodeValue=n.nodeValue.replace(t,EN[t]); } }
+    else if(n._bn){ n.nodeValue=n.nodeValue.replace(EN[n._bn],n._bn); n._bn=null; }
+  }
+  document.querySelectorAll('[placeholder]').forEach(el=>{
+    if(en){ if(!el._bp && EN[el.placeholder]){ el._bp=el.placeholder; el.placeholder=EN[el.placeholder]; } }
+    else if(el._bp){ el.placeholder=el._bp; el._bp=null; }
+  });
+}
+function applyS(){
+  document.body.style.zoom=((S.fs||100)/100);
+  document.documentElement.dataset.theme=S.night?'dark':'light';
+  if(S.color) document.body.style.setProperty('--ac',S.color); else document.body.style.removeProperty('--ac');
+  $('lg').textContent=S.en?'বাংলা':'English';
+  $('nm').textContent=S.night?'☀️':'🌙';
+  document.querySelectorAll('.cl').forEach(b=>b.classList.toggle('on',b.dataset.c===S.color));
+}
+$('fsm').onclick=()=>{S.fs=Math.max(80,(S.fs||100)-10);saveS();applyS();};
+$('fsp').onclick=()=>{S.fs=Math.min(150,(S.fs||100)+10);saveS();applyS();};
+$('nm').onclick=()=>{S.night=!S.night;saveS();applyS();};
+$('lg').onclick=()=>{S.en=!S.en;saveS();applyS();translate(!!S.en);};
+document.querySelectorAll('.cl').forEach(b=>b.onclick=()=>{S.color=b.dataset.c;saveS();applyS();});
+applyS(); if(S.en) translate(true);
+setInterval(()=>{if(document.activeElement!==$('mystop'))fillMyStop();draw();},60000);
+draw();renderChat();
+})();
+</script>
+</body></html>
